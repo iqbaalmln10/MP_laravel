@@ -13,15 +13,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. Membuat 1 User tetap untuk kamu login nanti
+        $user = \App\Models\User::factory()->create([
+            'name' => 'Belajar Laravel',
+            'email' => 'test@example.com',
+            'password' => bcrypt('password123'), // Password kamu nanti
+        ]);
 
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => 'password',
-                'email_verified_at' => now(),
-            ]
-        );
+        // 2. Membuat 10 Project acak yang dimiliki oleh user tersebut
+        \App\Models\Project::factory(10)->create([
+            'user_id' => $user->id,
+        ]);
     }
 }
