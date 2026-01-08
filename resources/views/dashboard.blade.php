@@ -1,8 +1,21 @@
 <x-layouts.app :title="__('Dashboard')">
     <div class="flex h-full w-full flex-1 flex-col gap-8 rounded-xl"
-        x-data="{ openCreate: false, openEdit: false }"
-        @trigger-edit.window="openEdit = true; $dispatch('edit-project', { id: $event.detail.id })"
-        @close-modal.window="openCreate = false; openEdit = false">
+        x-data="{ 
+            openCreate: false, 
+            openEdit: false, 
+            openDetail: false, 
+            selectedId: null 
+        }"
+        @trigger-edit.window="selectedId = $event.detail.id; openEdit = true; $dispatch('edit-project', { id: $event.detail.id })"
+
+        @trigger-detail.window="
+            selectedId = $event.detail.id; 
+            openDetail = true;
+            /* Tambahkan baris ini untuk memberitahu Livewire agar segera memuat data */
+            $dispatch('set-project', { id: $event.detail.id })
+        "
+
+        @close-modal.window="openCreate = false; openEdit = false; openDetail = false">
 
         <livewire:projects.stats />
 
@@ -26,41 +39,38 @@
             <livewire:projects.index />
         </div>
 
-        <div x-show="openCreate" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             class="fixed inset-0 z-[60] overflow-y-auto" 
-             style="display: none;">
-            
-            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" @click="openCreate = false"></div>
-
+        <div x-show="openCreate"
+            style="display: none;"
+            class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openCreate = false"></div>
             <div class="relative flex min-h-screen items-center justify-center p-4">
                 <div class="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-                    <livewire:projects.create 
-                        wire:key="modal-create"
-                        @project-created="openCreate = false"
-                        @close-modal="openCreate = false" />
+                    <livewire:projects.create wire:key="modal-create" />
                 </div>
             </div>
         </div>
 
-        <div x-show="openEdit" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             class="fixed inset-0 z-[60] overflow-y-auto" 
-             style="display: none;">
-            
-            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm transition-opacity" @click="openEdit = false"></div>
-
+        <div x-show="openEdit"
+            style="display: none;"
+            class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openEdit = false"></div>
             <div class="relative flex min-h-screen items-center justify-center p-4">
                 <div class="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-                    <livewire:projects.edit 
-                        wire:key="modal-edit"
-                        @project-updated="openEdit = false"
-                        @close-modal="openEdit = false" />
+                    <livewire:projects.edit wire:key="modal-edit" />
                 </div>
+            </div>
+        </div>
+
+        <div x-show="openDetail" style="display: none;" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openDetail = false"></div>
+            <div class="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+
+                <template x-if="openDetail">
+                    <livewire:projects.task-manager
+                        x-bind:project-id="selectedId"
+                        x-bind:key="'tm-' + selectedId" />
+                </template>
+
             </div>
         </div>
     </div>

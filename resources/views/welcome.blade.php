@@ -120,7 +120,7 @@
     </section>
 
     <footer class="text-center py-10 text-gray-400 text-sm">
-        &copy; {{ date('Y') }} Project Belajar Laravel. Dibuat dengan Scratching My Balls.
+        &copy; {{ date('Y') }} Project Belajar Laravel. Dibuat dengan Scratching My Balls Inc.
     </footer>
 
     <script>
