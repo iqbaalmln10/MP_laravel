@@ -8,7 +8,10 @@ with(fn() => [
     'projects' => Project::where('user_id', Auth::id())->latest()->get()
 ]);
 
-on(['project-updated' => function () {}]);
+on(['project-updated' => function () {
+    // Memaksa index mengambil data terbaru dari database
+    $this->dispatch('$refresh');
+}]);
 
 $delete = function ($id) {
     Project::where('id', $id)->where('user_id', Auth::id())->delete();
@@ -36,7 +39,9 @@ $toggleStatus = function ($id, $newStatus) {
         </div>
 
         <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition">
-            <select wire:change="toggleStatus({{ $project->id }}, $event.target.value)" class="text-xs border-gray-200 rounded-lg py-1">
+            <select
+                wire:change="updateStatus({{ $project->id }}, $event.target.value)"
+                class="text-xs border-gray-200 rounded-lg py-1">
                 <option value="pending" @selected($project->status == 'pending')>Pending</option>
                 <option value="on_progress" @selected($project->status == 'on_progress')>On Progress</option>
                 <option value="completed" @selected($project->status == 'completed')>Selesai</option>

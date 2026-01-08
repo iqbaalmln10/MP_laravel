@@ -4,30 +4,51 @@ use function Livewire\Volt\{state, on};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 
-state(['projectId' => '', 'title' => '', 'description' => '']);
+// Tambahkan 'status' ke dalam state agar bisa dibaca oleh dropdown
+state([
+    'projectId' => '', 
+    'title' => '', 
+    'description' => '', 
+    'status' => ''
+]);
 
 /**
- * PENTING: Jangan tulis ($payload) di dalam function.
- * Kita ambil datanya secara manual di dalam fungsi agar tidak Binding Error.
+ * Fungsi pembantu untuk mengambil data terbaru dari database
+ */
+$refreshData = function ($id) {
+    $project = Project::where('id', $id)
+        ->where('user_id', Auth::id())
+        ->first();
+
+    if ($project) {
+        $this->projectId = $project->id;
+        $this->title = $project->title;
+        $this->description = $project->description;
+        $this->status = $project->status; // Sinkronkan status database ke state
+    }
+};
+
+/**
+ * Listener saat tombol edit diklik
  */
 on(['edit-project' => function () {
-    // Mengambil argumen yang dikirim oleh Livewire secara manual
     $arguments = func_get_args();
     $data = $arguments[0] ?? null;
-
-    // Pastikan kita mendapatkan ID, baik dari array maupun nilai tunggal
     $id = is_array($data) ? ($data['id'] ?? null) : $data;
 
     if ($id) {
-        $project = Project::where('id', $id)
-            ->where('user_id', Auth::id())
-            ->first();
+        $this->refreshData($id);
+    }
+}]);
 
-        if ($project) {
-            $this->projectId = $project->id;
-            $this->title = $project->title;
-            $this->description = $project->description;
-        }
+/**
+ * KUNCI: Listener agar dropdown sinkron otomatis saat Task Manager mengubah status
+ */
+on(['project-updated' => function () {
+    if ($this->projectId) {
+        // Ambil ulang data status saja tanpa mengganggu input title/description yang sedang diketik
+        $currentStatus = Project::where('id', $this->projectId)->value('status');
+        $this->status = $currentStatus;
     }
 }]);
 
@@ -35,6 +56,7 @@ $update = function () {
     $this->validate([
         'title' => 'required|min:3|max:255',
         'description' => 'nullable',
+        'status' => 'required' // Pastikan status tervalidasi
     ]);
 
     $project = Project::where('id', $this->projectId)
@@ -45,6 +67,7 @@ $update = function () {
         $project->update([
             'title' => $this->title,
             'description' => $this->description,
+            'status' => $this->status,
         ]);
 
         $this->dispatch('project-updated');

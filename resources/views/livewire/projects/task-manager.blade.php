@@ -2,54 +2,89 @@
 use function Livewire\Volt\{state, with, on};
 use App\Models\{Project, Task};
 
-state(['projectId' => null, 'newTaskTitle' => '']);
+// Tambahkan state filter
+state(['projectId' => null, 'newTaskTitle' => '', 'filter' => 'all']);
 
-// Fungsi ini akan dipicu secara otomatis oleh Livewire saat projectId berubah
-$updatedProjectId = function() {
-    $this->dispatch('$refresh');
+$updateProjectStatus = function ($project) {
+    $total = $project->tasks()->count();
+    $completed = $project->tasks()->where('is_completed', true)->count();
+
+    if ($total === 0) {
+        $newStatus = 'pending';
+    } elseif ($completed === $total) {
+        $newStatus = 'completed';
+    } else {
+        // UBAH KE UNDERSCORE: 'on_progress'
+        $newStatus = 'on_progress'; 
+    }
+
+    $project->update(['status' => $newStatus]);
 };
-
-with(function () {
-    // Cari project secara reaktif
-    $project = $this->projectId ? Project::with('tasks')->find($this->projectId) : null;
-    
-    $total = $project?->tasks->count() ?? 0;
-    $completed = $project?->tasks->where('is_completed', true)->count() ?? 0;
-    $percent = $total > 0 ? round(($completed / $total) * 100) : 0;
-
-    return [
-        'project' => $project,
-        'percent' => $percent,
-        'total' => $total,
-        'completed' => $completed
-    ];
-});
 
 $addTask = function () {
     if (!$this->projectId || empty(trim($this->newTaskTitle))) return;
 
+    // 1. Buat Task baru
     Task::create([
         'project_id' => $this->projectId,
         'title' => $this->newTaskTitle,
         'is_completed' => false
     ]);
 
+    // 2. Ambil model project dan jalankan ulang logika status
+    $project = Project::find($this->projectId);
+    $this->updateProjectStatus($project); 
+
     $this->newTaskTitle = '';
-    $this->dispatch('project-updated');
+    $this->dispatch('project-updated'); 
 };
 
 $toggleTask = function ($id) {
     $task = Task::find($id);
     if ($task) {
         $task->update(['is_completed' => !$task->is_completed]);
+        
+        $project = Project::find($this->projectId);
+        $this->updateProjectStatus($project); // Jalankan update status
+        
         $this->dispatch('project-updated');
     }
 };
 
 $deleteTask = function ($id) {
-    Task::find($id)?->delete();
-    $this->dispatch('project-updated');
+    $task = Task::find($id);
+    if ($task) {
+        $task->delete();
+        $project = Project::find($this->projectId);
+        $this->updateProjectStatus($project); // Jalankan update status
+        $this->dispatch('project-updated');
+    }
 };
+
+with(function () {
+    $project = $this->projectId ? Project::with('tasks')->find($this->projectId) : null;
+    
+    // Logika Filter
+    $tasksQuery = $project ? $project->tasks() : null;
+    if ($tasksQuery) {
+        if ($this->filter === 'active') $tasksQuery->where('is_completed', false);
+        if ($this->filter === 'completed') $tasksQuery->where('is_completed', true);
+    }
+    $filteredTasks = $tasksQuery ? $tasksQuery->get() : [];
+
+    // Statistik tetap dari semua task (bukan yang difilter)
+    $total = $project?->tasks()->count() ?? 0;
+    $completedCount = $project?->tasks()->where('is_completed', true)->count() ?? 0;
+    $percent = $total > 0 ? round(($completedCount / $total) * 100) : 0;
+
+    return [
+        'project' => $project,
+        'tasks' => $filteredTasks,
+        'percent' => $percent,
+        'total' => $total,
+        'completed' => $completedCount
+    ];
+});
 ?>
 
 <div>
