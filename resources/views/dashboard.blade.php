@@ -3,18 +3,11 @@
         x-data="{ 
             openCreate: false, 
             openEdit: false, 
-            openDetail: false, 
+            openDetail: false,
             selectedId: null 
         }"
+        @trigger-detail.window="selectedId = $event.detail.id; openDetail = true"
         @trigger-edit.window="selectedId = $event.detail.id; openEdit = true; $dispatch('edit-project', { id: $event.detail.id })"
-
-        @trigger-detail.window="
-            selectedId = $event.detail.id; 
-            openDetail = true;
-            /* Tambahkan baris ini untuk memberitahu Livewire agar segera memuat data */
-            $dispatch('set-project', { id: $event.detail.id })
-        "
-
         @close-modal.window="openCreate = false; openEdit = false; openDetail = false">
 
         <livewire:projects.stats />
@@ -67,8 +60,7 @@
 
                 <template x-if="openDetail">
                     <livewire:projects.task-manager
-                        x-bind:project-id="selectedId"
-                        x-bind:key="'tm-' + selectedId" />
+                        x-init="$wire.projectId = selectedId" />
                 </template>
 
             </div>
