@@ -39,6 +39,11 @@ $save = function () {
         'status' => 'pending',
     ]);
 
+    $this->dispatch('notify', [
+        'message' => 'Proyek baru berhasil ditambahkan.',
+        'type' => 'success'
+    ]);
+
     // Reset state agar component bersih
     $this->reset(['title', 'description']);
 

@@ -69,7 +69,10 @@ $update = function () {
             'description' => $this->description,
             'status' => $this->status,
         ]);
-
+        $this->dispatch('notify', [
+            'message' => 'Proyek berhasil diperbarui.',
+            'type' => 'success'
+        ]);
         $this->dispatch('project-updated');
         $this->dispatch('close-modal');
     }

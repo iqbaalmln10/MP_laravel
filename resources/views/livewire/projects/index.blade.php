@@ -5,11 +5,15 @@ use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 
 // 1. Tambahkan state untuk filter
-state(['filterStatus' => 'all']);
+state([
+    'filterStatus' => 'all',
+    'confirmingDeletion' => false, // Status modal
+    'projectToDelete' => null,     // ID proyek yang dipilih
+]);
 
 mount(function () {
     $projectId = request()->query('open_project');
-    
+
     if ($projectId) {
         // Kita kirim dispatch melalui Livewire, 
         // secara otomatis akan ditangkap oleh Alpine.js yang mendengarkan 'trigger-detail'
@@ -17,7 +21,7 @@ mount(function () {
     }
 });
 
-with(function() {
+with(function () {
     $query = Project::where('user_id', Auth::id())->latest();
 
     // Logika Filter
@@ -35,9 +39,23 @@ on(['project-updated' => function () {
     $this->dispatch('$refresh');
 }]);
 
-$delete = function ($id) {
-    Project::where('id', $id)->where('user_id', Auth::id())->delete();
-    $this->dispatch('project-updated');
+$confirmDelete = function ($id) {
+    $this->projectToDelete = $id;
+    $this->confirmingDeletion = true;
+};
+
+$delete = function () {
+    if ($this->projectToDelete) {
+        Project::where('id', $this->projectToDelete)
+            ->where('user_id', Auth::id())
+            ->delete();
+
+        $this->confirmingDeletion = false;
+        $this->projectToDelete = null;
+
+        $this->dispatch('project-updated');
+        $this->dispatch('notify', message: 'Proyek berhasil dihapus!', type: 'error');
+    }
 };
 
 
@@ -46,6 +64,10 @@ $delete = function ($id) {
 $updateStatus = function ($id, $newStatus) {
     Project::where('id', $id)->where('user_id', Auth::id())->update(['status' => $newStatus]);
     $this->dispatch('project-updated');
+    $this->dispatch('notify', [
+        'message' => 'Status proyek berhasil diperbarui.',
+        'type' => 'success'
+    ]);
 };
 
 ?>
@@ -54,19 +76,19 @@ $updateStatus = function ($id, $newStatus) {
     <div class="flex items-center justify-between border-b border-gray-100 pb-4">
         <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
             @foreach([
-                'all' => 'Semua', 
-                'pending' => 'Pending', 
-                'on_progress' => 'Proses', 
-                'completed' => 'Selesai'
+            'all' => 'Semua',
+            'pending' => 'Pending',
+            'on_progress' => 'Proses',
+            'completed' => 'Selesai'
             ] as $key => $label)
-                <button 
-                    wire:click="$set('filterStatus', '{{ $key }}')"
-                    class="px-4 py-2 rounded-lg text-xs font-bold transition-all {{ $filterStatus === $key ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-                    {{ $label }}
-                </button>
+            <button
+                wire:click="$set('filterStatus', '{{ $key }}')"
+                class="px-4 py-2 rounded-lg text-xs font-bold transition-all {{ $filterStatus === $key ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+                {{ $label }}
+            </button>
             @endforeach
         </div>
-        
+
         <span class="text-xs text-gray-400 font-medium">
             Total: {{ $projects->count() }} Proyek
         </span>
@@ -111,15 +133,18 @@ $updateStatus = function ($id, $newStatus) {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                         </svg>
                     </button>
-
-                    <button type="button" 
-                        wire:click="delete({{ $project->id }})" 
-                        wire:confirm="Apakah Anda yakin ingin menghapus proyek ini?" 
+                    <button
+                        type="button"
+                        wire:click="confirmDelete({{ $project->id }})"
                         class="p-2 text-gray-400 hover:text-red-500 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862
+                                    a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6
+                                    m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
+
                 </div>
             </div>
         </div>
@@ -134,4 +159,39 @@ $updateStatus = function ($id, $newStatus) {
         </div>
         @endforelse
     </div>
+    <div x-data="{ open: @entangle('confirmingDeletion') }">
+    <template x-teleport="body">
+        <div x-show="open" 
+             class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+             
+            <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden"
+                 @click.outside="open = false">
+                <div class="p-8 text-center">
+                    <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Hapus Proyek?</h3>
+                    <p class="text-gray-500 text-sm">Tindakan ini tidak dapat dibatalkan.</p>
+                </div>
+
+                <div class="flex border-t">
+                    <button wire:click="$set('confirmingDeletion', false)"
+                        class="flex-1 py-4 font-bold text-gray-500 hover:bg-gray-50 transition">
+                        Batal
+                    </button>
+                    <button wire:click="delete"
+                        class="flex-1 py-4 font-bold text-red-600 hover:bg-red-50 transition border-l">
+                        Ya, Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
 </div>
