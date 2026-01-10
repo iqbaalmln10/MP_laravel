@@ -1,7 +1,8 @@
 <?php
-use function Livewire\Volt\{state, on};
+use function Livewire\Volt\{state, on, mount};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
+
 
 state([
     'total' => fn() => Project::where('user_id', Auth::id())->count(),
@@ -14,6 +15,7 @@ on(['project-updated' => function () {
     $this->pending = Project::where('user_id', Auth::id())->where('status', 'pending')->count();
     $this->completed = Project::where('user_id', Auth::id())->where('status', 'completed')->count();
 }]);
+
 ?>
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

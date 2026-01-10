@@ -16,7 +16,7 @@
         <flux:navlist variant="outline">
             <flux:navlist.group :heading="__('Platform')" class="grid">
                 <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Dashboard') }}</flux:navlist.item>
-                <flux:navlist.item icon="book-open-text" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>{{ __('Calendar') }}</flux:navlist.item>
+                <flux:navlist.item icon="Calendar" :href="route('calendar')" :current="request()->routeIs('calendar')" wire:navigate>{{ __('Calendar') }}</flux:navlist.item>
                  <!-- Tempat nambah fitur di sidebar -->
             </flux:navlist.group>
         </flux:navlist>

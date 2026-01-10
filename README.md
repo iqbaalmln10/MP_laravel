@@ -12,7 +12,7 @@ Berdasarkan percakapan kita dan kode yang telah kita susun bersama, Anda sedang 
 
 Berikut adalah daftar teknologi dan komponen yang Anda gunakan di dalam proyek **mp_laravel** ini:
 
-### 1. Framework Utama: **Laravel 11+**
+### 1. Framework Utama: **Laravel 12+**
 
 Anda menggunakan versi terbaru Laravel yang memberikan struktur folder lebih ramping. Anda memanfaatkannya untuk:
 

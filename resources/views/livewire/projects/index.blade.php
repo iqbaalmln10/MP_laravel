@@ -1,11 +1,21 @@
 <?php
 
-use function Livewire\Volt\{state, on, with};
+use function Livewire\Volt\{state, on, with, mount};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 
 // 1. Tambahkan state untuk filter
 state(['filterStatus' => 'all']);
+
+mount(function () {
+    $projectId = request()->query('open_project');
+    
+    if ($projectId) {
+        // Kita kirim dispatch melalui Livewire, 
+        // secara otomatis akan ditangkap oleh Alpine.js yang mendengarkan 'trigger-detail'
+        $this->dispatch('trigger-detail', id: (int)$projectId);
+    }
+});
 
 with(function() {
     $query = Project::where('user_id', Auth::id())->latest();
@@ -29,6 +39,8 @@ $delete = function ($id) {
     Project::where('id', $id)->where('user_id', Auth::id())->delete();
     $this->dispatch('project-updated');
 };
+
+
 
 // Sesuaikan nama fungsi dengan yang dipanggil di HTML (updateStatus)
 $updateStatus = function ($id, $newStatus) {

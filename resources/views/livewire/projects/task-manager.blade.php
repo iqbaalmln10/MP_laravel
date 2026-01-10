@@ -1,9 +1,15 @@
 <?php
+
 use function Livewire\Volt\{state, with, on};
 use App\Models\{Project, Task};
 
 // Tambahkan state filter
-state(['projectId' => null, 'newTaskTitle' => '', 'filter' => 'all']);
+state([
+    'projectId'     => '',
+    'newTaskTitle'  => '',
+    'due_date'      => date('Y-m-d'), // default hari ini
+    'filter'        => 'all',
+]);
 
 $updateProjectStatus = function ($project) {
     $total = $project->tasks()->count();
@@ -15,38 +21,59 @@ $updateProjectStatus = function ($project) {
         $newStatus = 'completed';
     } else {
         // UBAH KE UNDERSCORE: 'on_progress'
-        $newStatus = 'on_progress'; 
+        $newStatus = 'on_progress';
     }
 
     $project->update(['status' => $newStatus]);
 };
 
 $addTask = function () {
-    if (!$this->projectId || empty(trim($this->newTaskTitle))) return;
-
-    // 1. Buat Task baru
-    Task::create([
-        'project_id' => $this->projectId,
-        'title' => $this->newTaskTitle,
-        'is_completed' => false
+    // 1. Validasi input (Pastikan due_date masuk dalam validasi)
+    $this->validate([
+        'projectId'    => 'required',
+        'newTaskTitle' => 'required|min:3',
+        'due_date'      => 'required|date',
     ]);
 
-    // 2. Ambil model project dan jalankan ulang logika status
+    // 2. Ambil project
     $project = Project::find($this->projectId);
-    $this->updateProjectStatus($project); 
+    if (!$project) {
+        return;
+    }
 
+    // 3. Simpan task (termasuk due_date)
+    $project->tasks()->create([
+        'title'         => $this->newTaskTitle,
+        'due_date'      => $this->due_date,
+        'is_completed'  => false,
+    ]);
+
+    // 4. Update status project otomatis
+    // Fungsi ini akan menghitung ulang apakah project menjadi 'on_progress' atau 'completed'
+    $this->updateProjectStatus($project);
+
+    // 5. Reset input
     $this->newTaskTitle = '';
-    $this->dispatch('project-updated'); 
+    // Kita tidak me-reset due_date agar jika user ingin input banyak task 
+    // di tanggal yang sama, mereka tidak perlu memilih tanggal berulang kali.
+
+    // 6. Trigger event & Notifikasi
+    // project-updated memicu refresh pada index dashboard
+    $this->dispatch('project-updated');
+
+    // Opsional: Jika Anda ingin kalender langsung tahu ada data baru tanpa reload
+    $this->dispatch('calendar-updated');
 };
+
 
 $toggleTask = function ($id) {
     $task = Task::find($id);
     if ($task) {
         $task->update(['is_completed' => !$task->is_completed]);
-        
+
         $project = Project::find($this->projectId);
         $this->updateProjectStatus($project); // Jalankan update status
-        
+
         $this->dispatch('project-updated');
     }
 };
@@ -63,7 +90,7 @@ $deleteTask = function ($id) {
 
 with(function () {
     $project = $this->projectId ? Project::with('tasks')->find($this->projectId) : null;
-    
+
     // Logika Filter
     $tasksQuery = $project ? $project->tasks() : null;
     if ($tasksQuery) {
@@ -124,18 +151,37 @@ with(function () {
                 </div>
             </div>
 
-            <div class="relative group mb-8">
-                <input type="text"
-                    wire:model="newTaskTitle"
-                    wire:keydown.enter="addTask"
-                    placeholder="Apa yang perlu dikerjakan selanjutnya?"
-                    class="w-full pl-5 pr-14 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-0 transition-all outline-none text-sm shadow-sm font-medium italic group-hover:bg-gray-100/50 focus:group-hover:bg-white">
-                <button wire:click="addTask"
-                    class="absolute right-2 top-2 bottom-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all active:scale-90 flex items-center justify-center group">
-                    <svg class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                </button>
+            <div class="space-y-3 mb-8">
+                <div class="relative group">
+                    <input type="text"
+                        wire:model="newTaskTitle"
+                        wire:keydown.enter="addTask"
+                        placeholder="Apa yang perlu dikerjakan selanjutnya?"
+                        class="w-full pl-5 pr-14 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-0 transition-all outline-none text-sm shadow-sm font-medium italic group-hover:bg-gray-100/50 focus:group-hover:bg-white">
+
+                    <button wire:click="addTask"
+                        class="absolute right-2 top-2 bottom-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-all active:scale-90 flex items-center justify-center group">
+                        <svg class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3 px-2">
+                    <div class="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-transparent hover:border-blue-200 transition-all">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Deadline:</span>
+                        <input type="date"
+                            wire:model="due_date"
+                            class="bg-transparent border-none text-xs font-bold text-blue-600 focus:ring-0 p-0 cursor-pointer">
+                    </div>
+
+                    @error('due_date')
+                    <span class="text-[10px] text-red-500 font-medium italic">* Tanggal wajib diisi</span>
+                    @enderror
+                </div>
             </div>
 
             <div class="space-y-3">
@@ -157,6 +203,14 @@ with(function () {
                         <span class="text-sm font-semibold {{ $task->is_completed ? 'line-through text-gray-400' : 'text-gray-700' }} transition-all">
                             {{ $task->title }}
                         </span>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="text-[10px] text-gray-400 font-semibold tracking-wide uppercase">
+                                {{ \Carbon\Carbon::parse($task->due_date)->locale('id')->isoFormat('DD MMM YYYY') }}
+                            </span>
+                        </div>
                     </div>
 
                     <button wire:click="deleteTask({{ $task->id }})"

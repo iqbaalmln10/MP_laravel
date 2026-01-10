@@ -16,7 +16,7 @@ class DashboardController extends Controller
             'pendingProjects' => Project::where('user_id', Auth::id())->where('status', 'pending')->count(),
             'completedProjects' => Project::where('user_id', Auth::id())->where('status', 'completed')->count(),
         ];
-
+        
         // Mengirim data ke view dashboard
         return view('dashboard', $stats);
     }
