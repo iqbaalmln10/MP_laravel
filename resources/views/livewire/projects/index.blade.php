@@ -1,5 +1,6 @@
 <?php
 
+use function Laravel\Prompts\confirm;
 use function Livewire\Volt\{state, on, with, mount};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
@@ -9,6 +10,8 @@ state([
     'filterStatus' => 'all',
     'confirmingDeletion' => false, // Status modal
     'projectToDelete' => null,     // ID proyek yang dipilih
+    'confirmingArchive' => false,
+    'projectToArchive' => null,
 ]);
 
 mount(function () {
@@ -44,20 +47,43 @@ $confirmDelete = function ($id) {
     $this->confirmingDeletion = true;
 };
 
-$delete = function () {
-    if ($this->projectToDelete) {
-        Project::where('id', $this->projectToDelete)
+$archive = function () {
+    if ($this->projectToArchive) {
+        // Cari project-nya dulu sebagai instance Model agar SoftDeletes aktif
+        $project = Project::where('id', $this->projectToArchive)
             ->where('user_id', Auth::id())
-            ->delete();
+            ->first();
 
-        $this->confirmingDeletion = false;
-        $this->projectToDelete = null;
+        if ($project) {
+            $project->delete(); // Ini akan otomatis mengisi 'deleted_at'
+        }
 
-        $this->dispatch('project-updated');
-        $this->dispatch('notify', message: 'Proyek berhasil dihapus!', type: 'error');
+        $this->confirmingArchive = false;
+        $this->projectToArchive = null;
+
+        $this->dispatch('notify', message: 'Proyek berhasil diarsipkan!', type: 'success');
     }
 };
 
+$confirmArchive = function ($id) {
+    $this->projectToArchive = $id;
+    $this->confirmingArchive = true;
+};
+
+$archive = function () {
+    if ($this->projectToArchive) {
+        // Gunakan soft delete alih-alih update kolom 'archived'
+        Project::where('id', $this->projectToArchive)
+            ->where('user_id', Auth::id())
+            ->delete(); // ini akan mengisi deleted_at tanpa menghapus permanen
+
+        $this->confirmingArchive = false;
+        $this->projectToArchive = null;
+
+        $this->dispatch('project-updated');
+        $this->dispatch('notify', message: 'Proyek berhasil dipindahkan ke Archives!', type: 'success');
+    }
+};
 
 
 // Sesuaikan nama fungsi dengan yang dipanggil di HTML (updateStatus)
@@ -135,6 +161,15 @@ $updateStatus = function ($id, $newStatus) {
                     </button>
                     <button
                         type="button"
+                        wire:click="confirmArchive({{ $project->id }})"
+                        class="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-amber-600 transition-colors cursor-pointer p-2 hover:bg-amber-50 rounded-xl">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                        </svg>
+                        Archive
+                    </button>
+                    <button
+                        type="button"
                         wire:click="confirmDelete({{ $project->id }})"
                         class="p-2 text-gray-400 hover:text-red-500 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,7 +179,6 @@ $updateStatus = function ($id, $newStatus) {
                                     m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
-
                 </div>
             </div>
         </div>
@@ -160,38 +194,72 @@ $updateStatus = function ($id, $newStatus) {
         @endforelse
     </div>
     <div x-data="{ open: @entangle('confirmingDeletion') }">
-    <template x-teleport="body">
-        <div x-show="open" 
-             class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100">
-             
-            <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden"
-                 @click.outside="open = false">
-                <div class="p-8 text-center">
-                    <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-800 mb-2">Hapus Proyek?</h3>
-                    <p class="text-gray-500 text-sm">Tindakan ini tidak dapat dibatalkan.</p>
-                </div>
+        <template x-teleport="body">
+            <div x-show="open"
+                class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100">
 
-                <div class="flex border-t">
-                    <button wire:click="$set('confirmingDeletion', false)"
-                        class="flex-1 py-4 font-bold text-gray-500 hover:bg-gray-50 transition">
-                        Batal
-                    </button>
-                    <button wire:click="delete"
-                        class="flex-1 py-4 font-bold text-red-600 hover:bg-red-50 transition border-l">
-                        Ya, Hapus
-                    </button>
+                <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden"
+                    @click.outside="open = false">
+                    <div class="p-8 text-center">
+                        <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Hapus Proyek?</h3>
+                        <p class="text-gray-500 text-sm">Tindakan ini tidak dapat dibatalkan.</p>
+                    </div>
+
+                    <div class="flex border-t">
+                        <button wire:click="$set('confirmingDeletion', false)"
+                            class="flex-1 py-4 font-bold text-gray-500 hover:bg-gray-50 transition">
+                            Batal
+                        </button>
+                        <button wire:click="delete"
+                            class="flex-1 py-4 font-bold text-red-600 hover:bg-red-50 transition border-l">
+                            Ya, Hapus
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    </template>
-</div>
+        </template>
+    </div>
+    <!-- Pop-up Archive -->
+    <div x-data="{ open: @entangle('confirmingArchive') }">
+        <template x-teleport="body">
+            <div x-show="open"
+                class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100">
 
+                <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden"
+                    @click.outside="open = false">
+                    <div class="p-8 text-center">
+                        <div class="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Arsipkan Proyek?</h3>
+                        <p class="text-gray-500 text-sm">Proyek akan dipindahkan ke menu Archives.</p>
+                    </div>
+
+                    <div class="flex border-t">
+                        <button wire:click="$set('confirmingArchive', false)"
+                            class="flex-1 py-4 font-bold text-gray-500 hover:bg-gray-50 transition">
+                            Batal
+                        </button>
+                        <button wire:click="archive"
+                            class="flex-1 py-4 font-bold text-amber-600 hover:bg-amber-50 transition border-l">
+                            Ya, Arsipkan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
 </div>

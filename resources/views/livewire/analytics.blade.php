@@ -64,7 +64,7 @@ $exportExcel = function () {
         <button
             wire:click="exportExcel"
             wire:loading.attr="disabled"
-            class="group relative bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-lg shadow-gray-200 flex items-center gap-2 font-bold text-sm cursor-pointer active:scale-95 disabled:opacity-75">
+            class="group relative bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-lg shadow-gray-200 flex items-center gap-2 font-bold text-sm cursor-pointer active:scale-95 disabled:opacity-75">
             <div wire:loading wire:target="exportExcel">
                 <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
