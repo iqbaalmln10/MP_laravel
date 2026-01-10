@@ -12,7 +12,9 @@ state([
     'currentYear' => null,
     'tasks' => [],
     'selectedDate' => null, // Tambahkan ini agar tidak undefined
-    'showDetail' => false   // Tambahkan ini untuk kontrol modal
+    'showDetail' => false,   // Tambahkan ini untuk kontrol modal
+    'filterProjectId' => 'all', // State baru untuk filter
+    'myProjects' => fn() => \App\Models\Project::where('user_id', Auth::id())->get() // Ambil daftar projec
 ]);
 
 mount(function () {
@@ -26,17 +28,24 @@ $loadTasks = function () {
     $start = Carbon::createFromDate($this->currentYear, $this->currentMonth, 1)->startOfMonth();
     $end = Carbon::createFromDate($this->currentYear, $this->currentMonth, 1)->endOfMonth();
 
-    // Pastikan menggunakan with('project') agar nama project muncul di kalender
-    $this->tasks = Task::with('project')
+    $query = Task::with('project')
         ->whereHas('project', function ($q) {
             $q->where('user_id', Auth::id());
+            // Filter berdasarkan project yang dipilih
+            if ($this->filterProjectId !== 'all') {
+                $q->where('id', $this->filterProjectId);
+            }
         })
-        ->whereBetween('due_date', [$start, $end])
-        ->get()
-        ->groupBy(function ($date) {
-            return Carbon::parse($date->due_date)->format('j');
-        })
+        ->whereBetween('due_date', [$start, $end]);
+
+    $this->tasks = $query->get()
+        ->groupBy(fn($task) => Carbon::parse($task->due_date)->format('j'))
         ->toArray();
+};
+
+// Fungsi untuk merespon perubahan filter
+$updatedFilterProjectId = function () {
+    $this->loadTasks();
 };
 
 // Fungsi ini yang dipanggil saat tanggal diklik
@@ -69,6 +78,16 @@ $changeMonth = function ($direction) {
         </div>
 
         <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
+            <!-- FILTER PROJECT -->
+            <select
+                wire:model.live="filterProjectId"
+                class="text-sm border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 py-2 pl-3 pr-8 shadow-sm">
+                <option value="all">Semua Proyek</option>
+                @foreach($myProjects as $pro)
+                <option value="{{ $pro->id }}">{{ $pro->title }}</option>
+                @endforeach
+            </select>
+
             <button wire:click="changeMonth('prev')" class="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
@@ -127,14 +146,20 @@ $changeMonth = function ($direction) {
                 <!-- Preview task (tetap dipertahankan) -->
                 <div class="mt-2 space-y-1 overflow-hidden">
                     @foreach(array_slice($dayTasks, 0, 3) as $task)
-                    <div class="text-[9px] px-1.5 py-0.5 rounded border truncate
-                {{ $task['is_completed']
-                    ? 'bg-green-50 text-green-700 border-green-100 opacity-60'
-                    : 'bg-white text-blue-700 border-blue-100 shadow-sm' }}">
-                        <span class="font-bold">
-                            [{{ $task['project']['title'] ?? 'N/A' }}]
-                        </span>
-                        {{ $task['title'] }}
+                    @php
+                    $dueDate = \Carbon\Carbon::parse($task['due_date']);
+                    $isOverdue = $dueDate->isPast() && !$task['is_completed'] && !$dueDate->isToday();
+                    $isDueToday = $dueDate->isToday() && !$task['is_completed'];
+
+                    // Tentukan Warna
+                    $colorClass = 'bg-blue-50 text-blue-700 border-blue-100'; // Default
+                    if ($task['is_completed']) $colorClass = 'bg-green-50 text-green-600 border-green-100 opacity-60';
+                    elseif ($isOverdue) $colorClass = 'bg-red-50 text-red-700 border-red-100 animate-pulse'; // Berkedip jika lewat deadline
+                    elseif ($isDueToday) $colorClass = 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm';
+                    @endphp
+
+                    <div class="text-[9px] px-1.5 py-0.5 rounded border truncate {{ $colorClass }}">
+                        <span class="font-bold">[{{ $task['project']['title'] ?? 'N/A' }}]</span> {{ $task['title'] }}
                     </div>
                     @endforeach
 
@@ -188,9 +213,31 @@ $changeMonth = function ($direction) {
                 wire:navigate
                 class="flex items-center justify-between p-4 rounded-2xl border-2 border-gray-50 hover:border-blue-500 hover:bg-blue-50/50 transition-all group">
                 <div class="flex-1 pr-4">
-                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-tighter">{{ $task['project']['title'] ?? 'Proyek' }}</span>
-                    <h4 class="font-bold text-gray-800 leading-tight group-hover:text-blue-700 transition-colors">{{ $task['title'] }}</h4>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+                            {{ $task['project']['title'] ?? 'Proyek' }}
+                        </span>
+
+                        @php
+                        $dueDate = \Carbon\Carbon::parse($task['due_date']);
+                        @endphp
+
+                        @if(!$task['is_completed'] && $dueDate->isPast() && !$dueDate->isToday())
+                        <span class="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                            Terlambat
+                        </span>
+                        @elseif(!$task['is_completed'] && $dueDate->isToday())
+                        <span class="text-[8px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                            Hari Ini
+                        </span>
+                        @endif
+                    </div>
+
+                    <h4 class="font-bold text-gray-800 leading-tight group-hover:text-blue-700 transition-colors">
+                        {{ $task['title'] }}
+                    </h4>
                 </div>
+
                 <div class="flex items-center gap-2">
                     @if($task['is_completed'])
                     <span class="bg-green-100 text-green-600 p-1 rounded-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
