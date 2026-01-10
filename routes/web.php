@@ -16,6 +16,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 Route::middleware(['auth'])->group(function () {
     Volt::route('/calendar', 'calendar')->name('calendar');
+    Volt::route('/analytics', 'analytics')->name('analytics');
     Route::redirect('settings', 'settings/profile');
 
     Volt::route('settings/profile', 'settings.profile')->name('profile.edit');

@@ -1,11 +1,14 @@
 <?php
 
-use function Livewire\Volt\{state, mount, layout};
+use function Livewire\Volt\{state, mount, layout, title};
+use function Symfony\Component\Translation\t;
+
 use App\Models\Task;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 layout('components.layouts.app');
+title('Calendar');
 
 state([
     'currentMonth' => null,
@@ -77,33 +80,67 @@ $changeMonth = function ($direction) {
             <p class="text-sm text-neutral-500">Pantau jadwal deadline proyek Anda.</p>
         </div>
 
-        <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
-            <!-- FILTER PROJECT -->
-            <select
-                wire:model.live="filterProjectId"
-                class="text-sm border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 py-2 pl-3 pr-8 shadow-sm">
-                <option value="all">Semua Proyek</option>
-                @foreach($myProjects as $pro)
-                <option value="{{ $pro->id }}">{{ $pro->title }}</option>
-                @endforeach
-            </select>
+        <div
+            x-data="{ animating: false }"
+            class="flex items-center gap-2 bg-white/90 backdrop-blur border border-gray-200 rounded-2xl px-2 py-1 shadow-md">
 
-            <button wire:click="changeMonth('prev')" class="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            <!-- PROJECT FILTER -->
+            <div class="relative">
+                <select
+                    wire:model.live="filterProjectId"
+                    class="appearance-none text-sm font-semibold bg-transparent border-none focus:ring-0 focus:outline-none px-4 py-2 pr-9 rounded-xl hover:bg-gray-50 transition cursor-pointer">
+                    <option value="all">Semua Proyek</option>
+                    @foreach($myProjects as $pro)
+                    <option value="{{ $pro->id }}">{{ $pro->title }}</option>
+                    @endforeach
+                </select>
+
+                <!-- Chevron -->
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 9l-7 7-7-7" />
                 </svg>
-            </button>
+            </div>
 
-            <span class="px-4 font-bold text-gray-700 min-w-[150px] text-center">
-                {{ \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)->locale('id')->isoFormat('MMMM Y') }}
-            </span>
+            <!-- DIVIDER -->
+            <div class="h-8 w-px bg-gray-200"></div>
 
-            <button wire:click="changeMonth('next')" class="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
+            <!-- DATE CHOOSER -->
+            <div class="flex items-center gap-1">
+
+                <button
+                    @click="animating = true"
+                    wire:click="changeMonth('prev')"
+                    class="p-2 rounded-xl hover:bg-gray-100 transition text-gray-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+
+                <span
+                    x-transition
+                    @transitionend="animating = false"
+                    class="px-4 min-w-[150px] text-center text-sm font-bold text-gray-800">
+                    {{ \Carbon\Carbon::createFromDate($currentYear, $currentMonth, 1)
+                ->locale('id')
+                ->isoFormat('MMMM Y') }}
+                </span>
+
+                <button
+                    @click="animating = true"
+                    wire:click="changeMonth('next')"
+                    class="p-2 rounded-xl hover:bg-gray-100 transition text-gray-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+
+            </div>
         </div>
+
     </div>
 
     <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex-1 flex flex-col">
