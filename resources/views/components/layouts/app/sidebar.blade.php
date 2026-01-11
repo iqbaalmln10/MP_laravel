@@ -51,6 +51,26 @@
                 </flux:navlist.item>
 
                 <flux:navlist.item
+                    :href="route('deadlines')"
+                    :current="request()->routeIs('deadlines')"
+                    wire:navigate>
+                    <x-slot:icon>
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M6.75 3v1.5M17.25 3v1.5M3.75 7.5h16.5M4.5 6.75h15a1.5 1.5 0 0 1 1.5 1.5v11.25a1.5 1.5 0 0 1-1.5 1.5h-15a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 12v3m0 0h.01" />
+                        </svg>
+                    </x-slot:icon>
+                    {{ __('Deadlines') }}
+                </flux:navlist.item>
+
+                <flux:navlist.item
                     :href="route('analytics')"
                     :current="request()->routeIs('analytics')"
                     wire:navigate>

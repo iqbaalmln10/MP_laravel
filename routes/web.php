@@ -19,6 +19,7 @@ Route::middleware(['auth'])->group(function () {
     Volt::route('/analytics', 'analytics')->name('analytics');
     Volt::route('/archives', 'archives')->name('archives');
     Volt::route('/activity', 'activity')->name('activity');
+    Volt::route('/deadlines', 'deadlines')->name('deadlines');
     Route::redirect('settings', 'settings/profile');
 
     Volt::route('settings/profile', 'settings.profile')->name('profile.edit');
