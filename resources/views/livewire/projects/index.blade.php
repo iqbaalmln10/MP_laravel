@@ -26,7 +26,14 @@ mount(function () {
 });
 
 with(function () {
-    $query = Project::where('user_id', Auth::id())->latest();
+    $query = Project::where('user_id', Auth::id())
+        // 1. Hitung total task
+        ->withCount('tasks') 
+        // 2. Hitung task yang is_completed = true
+        ->withCount(['tasks as completed_tasks_count' => function ($q) {
+            $q->where('is_completed', true);
+        }])
+        ->latest();
 
     // Logika Filter
     if ($this->filterStatus !== 'all') {
@@ -96,7 +103,7 @@ $delete = function () {
                 'deleted' // Action disesuaikan
             );
 
-            $project->delete(); 
+            $project->delete();
         }
 
         $this->confirmingDeletion = false;
@@ -154,6 +161,17 @@ $updateStatus = function ($id, $newStatus) {
                     </span>
                 </div>
                 <p class="text-sm text-gray-500 mt-1 line-clamp-1">{{ $project->description }}</p>
+                <div class="mt-4">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-neutral-400 uppercase">Progress</span>
+                        <span class="text-[10px] font-black text-neutral-800">{{ $project->tasks_count > 0 ? round(($project->completed_tasks_count / $project->tasks_count) * 100) : 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-neutral-100 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full rounded-full transition-all duration-500"
+                            style="width: {{ $project->tasks_count > 0 ? ($project->completed_tasks_count / $project->tasks_count) * 100 : 0 }}%">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition">

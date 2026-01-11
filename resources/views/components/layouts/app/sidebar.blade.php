@@ -33,6 +33,26 @@
                 </flux:navlist.item>
 
                 <flux:navlist.item
+                    :href="route('notes')"
+                    :current="request()->routeIs('notes')"
+                    wire:navigate>
+                    <x-slot:icon>
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M6 3.75h7.5L18 8.25V19.5a.75.75 0 0 1-.75.75H6.75A.75.75 0 0 1 6 19.5V3.75z" />
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9.75h3.75M9 13.5h6.75M9 17.25h6.75" />
+                        </svg>
+                    </x-slot:icon>
+                    {{ __('Notes') }}
+                </flux:navlist.item>
+
+                <flux:navlist.item
                     :href="route('calendar')"
                     :current="request()->routeIs('calendar')"
                     wire:navigate>
