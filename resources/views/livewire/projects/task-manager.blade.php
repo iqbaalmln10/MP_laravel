@@ -2,6 +2,7 @@
 
 use function Livewire\Volt\{state, with, on};
 use App\Models\{Project, Task};
+use App\Models\Activity;
 
 // Tambahkan state filter
 state([
@@ -28,40 +29,33 @@ $updateProjectStatus = function ($project) {
 };
 
 $addTask = function () {
-    // 1. Validasi input (Pastikan due_date masuk dalam validasi)
     $this->validate([
         'projectId'    => 'required',
         'newTaskTitle' => 'required|min:3',
         'due_date'      => 'required|date',
     ]);
 
-    // 2. Ambil project
     $project = Project::find($this->projectId);
-    if (!$project) {
-        return;
-    }
+    if (!$project) return;
 
-    // 3. Simpan task (termasuk due_date)
-    $project->tasks()->create([
+    // Simpan task ke variabel agar bisa diambil title-nya untuk log
+    $task = $project->tasks()->create([
         'title'         => $this->newTaskTitle,
         'due_date'      => $this->due_date,
         'is_completed'  => false,
     ]);
 
-    // 4. Update status project otomatis
-    // Fungsi ini akan menghitung ulang apakah project menjadi 'on_progress' atau 'completed'
+    // TAMBAHKAN LOG DISINI
+    Activity::log(
+        "Menambahkan tugas baru: {$task->title}", 
+        $project->title, 
+        'task', 
+        'created'
+    );
+
     $this->updateProjectStatus($project);
-
-    // 5. Reset input
     $this->newTaskTitle = '';
-    // Kita tidak me-reset due_date agar jika user ingin input banyak task 
-    // di tanggal yang sama, mereka tidak perlu memilih tanggal berulang kali.
-
-    // 6. Trigger event & Notifikasi
-    // project-updated memicu refresh pada index dashboard
     $this->dispatch('project-updated');
-
-    // Opsional: Jika Anda ingin kalender langsung tahu ada data baru tanpa reload
     $this->dispatch('calendar-updated');
 };
 
@@ -71,9 +65,19 @@ $toggleTask = function ($id) {
     if ($task) {
         $task->update(['is_completed' => !$task->is_completed]);
 
-        $project = Project::find($this->projectId);
-        $this->updateProjectStatus($project); // Jalankan update status
+        // TAMBAHKAN LOG HANYA JIKA SELESAI
+        if ($task->is_completed) {
+            $project = Project::find($this->projectId);
+            Activity::log(
+                "Menyelesaikan tugas: {$task->title}", 
+                $project->title, 
+                'task', 
+                'completed'
+            );
+        }
 
+        $project = Project::find($this->projectId);
+        $this->updateProjectStatus($project);
         $this->dispatch('project-updated');
     }
 };
@@ -81,9 +85,18 @@ $toggleTask = function ($id) {
 $deleteTask = function ($id) {
     $task = Task::find($id);
     if ($task) {
-        $task->delete();
         $project = Project::find($this->projectId);
-        $this->updateProjectStatus($project); // Jalankan update status
+
+        // TAMBAHKAN LOG SEBELUM DELETE
+        Activity::log(
+            "Menghapus tugas: {$task->title}", 
+            $project->title, 
+            'task', 
+            'deleted'
+        );
+
+        $task->delete();
+        $this->updateProjectStatus($project);
         $this->dispatch('project-updated');
     }
 };

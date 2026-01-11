@@ -3,12 +3,13 @@
 use function Livewire\Volt\{state, on};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Activity;
 
 // Tambahkan 'status' ke dalam state agar bisa dibaca oleh dropdown
 state([
-    'projectId' => '', 
-    'title' => '', 
-    'description' => '', 
+    'projectId' => '',
+    'title' => '',
+    'description' => '',
     'status' => ''
 ]);
 
@@ -56,7 +57,7 @@ $update = function () {
     $this->validate([
         'title' => 'required|min:3|max:255',
         'description' => 'nullable',
-        'status' => 'required' // Pastikan status tervalidasi
+        'status' => 'required'
     ]);
 
     $project = Project::where('id', $this->projectId)
@@ -64,15 +65,27 @@ $update = function () {
         ->first();
 
     if ($project) {
+        // 1. Simpan judul lama sebelum di-update (opsional, jika ingin log lebih detil)
+        $oldTitle = $project->title;
+        // 2. Lakukan Update
         $project->update([
             'title' => $this->title,
             'description' => $this->description,
             'status' => $this->status,
         ]);
-        $this->dispatch('notify', [
-            'message' => 'Proyek berhasil diperbarui.',
-            'type' => 'success'
-        ]);
+        // 3. Catat ke Activity Feed
+        Activity::log(
+            'Memperbarui informasi proyek',
+            $project->title, // Menggunakan judul baru setelah update
+            'project',
+            'updated'
+        );
+        $this->dispatch(
+            'notify',
+            message: 'Proyek berhasil diperbarui.',
+            type: 'success'
+        );
+
         $this->dispatch('project-updated');
         $this->dispatch('close-modal');
     }

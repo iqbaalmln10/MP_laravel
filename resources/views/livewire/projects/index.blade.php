@@ -4,6 +4,7 @@ use function Laravel\Prompts\confirm;
 use function Livewire\Volt\{state, on, with, mount};
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Activity;
 
 // 1. Tambahkan state untuk filter
 state([
@@ -42,46 +43,67 @@ on(['project-updated' => function () {
     $this->dispatch('$refresh');
 }]);
 
-$confirmDelete = function ($id) {
-    $this->projectToDelete = $id;
-    $this->confirmingDeletion = true;
-};
-
 $archive = function () {
     if ($this->projectToArchive) {
-        // Cari project-nya dulu sebagai instance Model agar SoftDeletes aktif
         $project = Project::where('id', $this->projectToArchive)
             ->where('user_id', Auth::id())
             ->first();
 
         if ($project) {
-            $project->delete(); // Ini akan otomatis mengisi 'deleted_at'
+            // 1. Catat log dulu selagi proyek masih "Active"
+            Activity::log(
+                'Mengarsipkan proyek',
+                $project->title,
+                'project',
+                'archived'
+            );
+
+            // 2. Baru kemudian hapus (arsip)
+            $project->delete();
         }
 
         $this->confirmingArchive = false;
         $this->projectToArchive = null;
 
         $this->dispatch('notify', message: 'Proyek berhasil diarsipkan!', type: 'success');
+        // Jangan lupa dispatch agar list di dashboard terupdate otomatis
+        $this->dispatch('project-updated');
     }
 };
-
 $confirmArchive = function ($id) {
     $this->projectToArchive = $id;
     $this->confirmingArchive = true;
 };
 
-$archive = function () {
-    if ($this->projectToArchive) {
-        // Gunakan soft delete alih-alih update kolom 'archived'
-        Project::where('id', $this->projectToArchive)
-            ->where('user_id', Auth::id())
-            ->delete(); // ini akan mengisi deleted_at tanpa menghapus permanen
+$confirmDelete = function ($id) {
+    $this->projectToDelete = $id;
+    $this->confirmingDeletion = true;
+};
 
-        $this->confirmingArchive = false;
-        $this->projectToArchive = null;
+$delete = function () {
+    if ($this->projectToDelete) {
+        // 1. Cari dulu datanya agar kita bisa ambil Judul Proyeknya
+        $project = Project::where('id', $this->projectToDelete)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if ($project) {
+            // 2. Catat Log SEBELUM data benar-benar hilang dari database
+            Activity::log(
+                'Proyek di Pindahkan ke Archive', // Deskripsi disesuaikan
+                $project->title,
+                'project',
+                'deleted' // Action disesuaikan
+            );
+
+            $project->delete(); 
+        }
+
+        $this->confirmingDeletion = false;
+        $this->projectToDelete = null;
 
         $this->dispatch('project-updated');
-        $this->dispatch('notify', message: 'Proyek berhasil dipindahkan ke Archives!', type: 'success');
+        $this->dispatch('notify', message: 'Proyek berhasil dihapus permanen!', type: 'error');
     }
 };
 

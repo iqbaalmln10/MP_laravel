@@ -68,6 +68,24 @@
                     {{ __('Analytics') }}
                 </flux:navlist.item>
 
+                <flux:navlist.item
+                    :href="route('activity')"
+                    :current="request()->routeIs('activity')"
+                    wire:navigate>
+                    <x-slot:icon>
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 12h4l2-6 4 12 2-6h6" />
+                        </svg>
+                    </x-slot:icon>
+                    {{ __('Activity Feed') }}
+                </flux:navlist.item>
+
                 <!-- Tempat nambah fitur di sidebar -->
             </flux:navlist.group>
         </flux:navlist>

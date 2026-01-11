@@ -2,6 +2,7 @@
 
 use function Livewire\Volt\{state, rules, on};
 use App\Models\Project;
+use App\Models\Activity;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 | State
 |--------------------------------------------------------------------------
 */
+
 state([
     'title' => '',
     'description' => '',
@@ -32,28 +34,32 @@ rules([
 $save = function () {
     $this->validate();
 
-    Project::create([
+    // 1. Simpan hasil pembuatan proyek ke dalam variabel $project
+    $project = Project::create([
         'title' => $this->title,
         'description' => $this->description,
         'user_id' => Auth::id(),
         'status' => 'pending',
     ]);
 
-    $this->dispatch('notify', [
-        'message' => 'Proyek baru berhasil ditambahkan.',
-        'type' => 'success'
-    ]);
+    // 2. Sekarang variabel $project sudah ada, jadi log bisa dijalankan
+        Activity::log(
+        'Membuat proyek baru',
+        $project->title,
+        'project',
+        'created'
+    );
 
-    // Reset state agar component bersih
+    $this->dispatch(
+        'notify',
+        message: 'Proyek baru berhasil ditambahkan.',
+        type: 'success'
+    );
+
     $this->reset(['title', 'description']);
-
-    // Refresh dashboard
     $this->dispatch('project-updated')->to('projects.index');
-
-    // Tutup modal
     $this->dispatch('close-modal');
 };
-
 /*
 |--------------------------------------------------------------------------
 | Cleanup ketika modal ditutup
@@ -75,8 +81,7 @@ on([
         <button
             type="button"
             @click="$dispatch('close-modal')"
-            class="text-2xl font-bold text-gray-400 hover:text-gray-600"
-        >
+            class="text-2xl font-bold text-gray-400 hover:text-gray-600">
             &times;
         </button>
     </div>
@@ -90,13 +95,12 @@ on([
             <input
                 type="text"
                 wire:model.defer="title"
-                class="w-full px-4 py-2 transition border-gray-200 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
+                class="w-full px-4 py-2 transition border-gray-200 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500">
 
             @error('title')
-                <span class="mt-1 text-xs text-red-500">
-                    {{ $message }}
-                </span>
+            <span class="mt-1 text-xs text-red-500">
+                {{ $message }}
+            </span>
             @enderror
         </div>
 
@@ -108,13 +112,12 @@ on([
             <textarea
                 wire:model.defer="description"
                 rows="3"
-                class="w-full px-4 py-2 transition border-gray-200 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            ></textarea>
+                class="w-full px-4 py-2 transition border-gray-200 rounded-xl shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
 
             @error('description')
-                <span class="mt-1 text-xs text-red-500">
-                    {{ $message }}
-                </span>
+            <span class="mt-1 text-xs text-red-500">
+                {{ $message }}
+            </span>
             @enderror
         </div>
 
@@ -122,15 +125,13 @@ on([
             <button
                 type="button"
                 @click="$dispatch('close-modal')"
-                class="px-5 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-800"
-            >
+                class="px-5 py-2 text-sm font-medium text-gray-500 transition hover:text-gray-800">
                 Batal
             </button>
 
             <button
                 type="submit"
-                class="px-6 py-2 text-sm font-bold text-white transition bg-blue-600 shadow-lg rounded-xl hover:bg-blue-700 shadow-blue-500/20"
-            >
+                class="px-6 py-2 text-sm font-bold text-white transition bg-blue-600 shadow-lg rounded-xl hover:bg-blue-700 shadow-blue-500/20">
                 Simpan Proyek
             </button>
         </div>
