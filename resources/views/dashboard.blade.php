@@ -1,24 +1,69 @@
 <x-layouts.app :title="__('Dashboard')">
-    <div class="flex h-full w-full flex-1 flex-col gap-4 rounded-xl">
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-                <h4 class="text-sm font-medium text-gray-500">Total Proyek</h4>
-                <p class="text-3xl font-bold mt-2">10</p>
+    <div class="flex h-full w-full flex-1 flex-col gap-8 rounded-xl"
+        x-data="{ 
+            openCreate: false, 
+            openEdit: false, 
+            openDetail: false,
+            selectedId: null 
+        }"
+        @trigger-detail.window="selectedId = $event.detail.id; openDetail = true"
+        @trigger-edit.window="selectedId = $event.detail.id; openEdit = true; $dispatch('edit-project', { id: $event.detail.id })"
+        @close-modal.window="openCreate = false; openEdit = false; openDetail = false">
+
+        <livewire:projects.stats />
+
+        <div class="relative min-h-[500px] flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm transition-all">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-neutral-800 tracking-tight">Daftar Proyek Saya</h2>
+                    <p class="text-sm text-neutral-500">Kelola dan pantau progress pekerjaan Anda di sini.</p>
+                </div>
+
+                <button
+                    @click="openCreate = true"
+                    class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/25 active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Proyek Baru
+                </button>
             </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-                <h4 class="text-sm font-medium text-gray-500">Status Pending</h4>
-                <p class="text-3xl font-bold mt-2 text-yellow-500">5</p>
-            </div>
-            <div class="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 p-6 text-green-500">
-                <h4 class="text-sm font-medium text-gray-500">Selesai</h4>
-                <p class="text-3xl font-bold mt-2">5</p>
+
+            <livewire:projects.index />
+        </div>
+
+        <div x-show="openCreate"
+            style="display: none;"
+            class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openCreate = false"></div>
+            <div class="relative flex min-h-screen items-center justify-center p-4">
+                <div class="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <livewire:projects.create wire:key="modal-create" />
+                </div>
             </div>
         </div>
 
-        <div class="relative h-full flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 p-6">
-            <h2 class="text-xl font-semibold mb-4 text-neutral-800 dark:text-neutral-200">Daftar Proyek Saya</h2>
-            
-            <livewire:projects.index />
+        <div x-show="openEdit"
+            style="display: none;"
+            class="fixed inset-0 z-[60] overflow-y-auto">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openEdit = false"></div>
+            <div class="relative flex min-h-screen items-center justify-center p-4">
+                <div class="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <livewire:projects.edit wire:key="modal-edit" />
+                </div>
+            </div>
+        </div>
+
+        <div x-show="openDetail" style="display: none;" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="openDetail = false"></div>
+            <div class="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden">
+
+                <template x-if="openDetail">
+                    <livewire:projects.task-manager
+                        x-init="$wire.projectId = selectedId" />
+                </template>
+
+            </div>
         </div>
     </div>
 </x-layouts.app>
